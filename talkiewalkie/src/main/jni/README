@@ -1,3 +1,7 @@
+- This is an exact copy of the Opus 1.1.4 library sources...
+  Except for the addition of jniopus.h, jniopus.cpp, Android.mk and Application.mk
+  - Jasper out. 18 feb 2017
+
 == Opus audio codec ==
 
 Opus is a codec for interactive speech and audio transmission over the Internet.
