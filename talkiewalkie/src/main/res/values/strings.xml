@@ -1,0 +1,10 @@
+<resources>
+
+    <string name="app_name">TalkieWalkie</string>
+
+    <string name="mic_tlk">Push to Talk</string>
+    <string name="mic_rec">Talking</string>
+
+    <string name="volume">Volume</string>
+
+</resources>
