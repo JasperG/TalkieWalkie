@@ -175,6 +175,9 @@ public class Input {
                                             data[0] = (byte) noOnce;
                                             noOnce = noOnce + 1 % 256;
 
+                                            data[2] = (byte) ((Output.identcode >> 8) & 0xFF);
+                                            data[3] = (byte) (Output.identcode & 0xFF);
+
                                             System.arraycopy(opus_audio_bytes, bytes_sent, data, 64, byte_queue);
 
                                             //Log.e("SENDING", Integer.toString(data.length) + " bytes");
@@ -222,6 +225,9 @@ public class Input {
 
                                 data[0] = (byte) noOnce;
                                 noOnce = noOnce + 1 % 256;
+
+                                data[2] = (byte) ((Output.identcode >> 8) & 0xFF);
+                                data[3] = (byte) (Output.identcode & 0xFF);
 
                                 System.arraycopy(opus_audio_bytes, bytes_sent, data, 64, byte_queue);
 

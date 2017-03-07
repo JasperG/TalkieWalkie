@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
 
         NativeLib.init(getApplicationContext(), "talkwalkopus");
 
-        Output.start();
+        Output.start(getApplicationContext());
 
         /* Keep screen on while in foreground */
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

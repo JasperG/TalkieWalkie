@@ -1,7 +1,12 @@
 package com.jaspergoes.talkiewalkie.audio;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.util.Log;
 
 import com.jaspergoes.talkiewalkie.audio.codecs.opus.NativeAudioException;
 import com.jaspergoes.talkiewalkie.audio.codecs.opus.OpusDecoder;
@@ -18,11 +23,59 @@ public class Output {
 
     private static volatile boolean _die;
 
-    public static void start() {
+    public static short identcode;
+
+    private static byte[] keepAlivePacket;
+
+    private static BroadcastReceiver receiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            if (intent.getAction().equals("android.net.conn.CONNECTIVITY_CHANGE")) {
+
+                if (Connection.socket != null) {
+
+                    new Thread(new Runnable() {
+
+                        @Override
+                        public void run() {
+
+                            try {
+
+
+                                Connection.socket.send(new DatagramPacket(keepAlivePacket, 4, Connection.target, 8200));
+
+                                Connection.setSent();
+
+                            } catch (IOException e) {
+
+                                e.printStackTrace();
+
+                            }
+
+                        }
+
+                    }).start();
+
+                }
+            }
+
+        }
+
+    };
+
+    public static void start(Context context) {
+
+        context.registerReceiver(receiver, new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE"));
+
+        identcode = (short) (Math.random() * 65535);
+
+        keepAlivePacket = new byte[]{(byte) 100, (byte) 64, (byte) ((Output.identcode >> 8) & 0xFF), (byte) (Output.identcode & 0xFF)};
 
         _die = false;
 
-        final int bufferSize = AudioTrack.getMinBufferSize(Configuration.AUDIO_SAMPLERATE, Configuration.AUDIO_CHANNEL_IN, Configuration.AUDIO_FORMAT);
+        final int bufferSize = AudioTrack.getMinBufferSize(Configuration.AUDIO_SAMPLERATE, Configuration.AUDIO_CHANNEL_OUT, Configuration.AUDIO_FORMAT);
         final PriorityQueue<TalkWalkPacket> queue = new PriorityQueue<TalkWalkPacket>(10, new TalkWalkPacketComparator());
 
         final int queueSize = 6; /* Wait (queueSize * (FRAME_SIZE / AUDIO_SAMPLERATE)) seconds */
@@ -53,6 +106,7 @@ public class Output {
 
                 int i;
                 int len;
+                byte[] totaldata;
                 byte[] data;
 
                 while (!_die) {
@@ -64,7 +118,7 @@ public class Output {
 
                             if (Connection.sent < System.currentTimeMillis()) {
 
-                                Connection.socket.send(new DatagramPacket(new byte[]{(byte) 100, (byte) 40, (byte) 32, (byte) 32}, 4, target, 8200));
+                                Connection.socket.send(new DatagramPacket(keepAlivePacket, 4, target, 8200));
 
                                 Connection.setSent();
 
@@ -84,11 +138,13 @@ public class Output {
 
                                 Connection.socket.receive(packet);
 
+                                totaldata = packet.getData();
+
                                 len = packet.getLength() - 64;
                                 data = new byte[len];
-                                System.arraycopy(packet.getData(), 64, data, 0, len);
+                                System.arraycopy(totaldata, 64, data, 0, len);
 
-                                queue.add(new TalkWalkPacket(((int) packet.getData()[0]) & 0xff, data));
+                                queue.add(new TalkWalkPacket(totaldata[0] & 0xff, ((totaldata[2] & 0xFF) << 8 | totaldata[3] & 0xFF), data));
 
                                 if (i == queueSize) synchronized (lock) {
                                     lock.notify();
@@ -165,6 +221,7 @@ public class Output {
                                 handlePack = queue.remove();
                                 pcmOutLength = decoder.decodeShort(handlePack.data, handlePack.data.length, pcmOut, Configuration.FRAME_SIZE);
                                 track.write(pcmOut, 0, pcmOutLength);
+                                Log.e("OHJA", Integer.toString(handlePack.ident));
                                 track.play();
 
                             } catch (NativeAudioException e) {
@@ -181,6 +238,7 @@ public class Output {
                                     handlePack = queue.remove();
                                     pcmOutLength = decoder.decodeShort(handlePack.data, handlePack.data.length, pcmOut, Configuration.FRAME_SIZE);
                                     track.write(pcmOut, 0, pcmOutLength);
+                                    Log.e("OHJA", Integer.toString(handlePack.ident));
 
                                 } catch (NativeAudioException e) {
 
